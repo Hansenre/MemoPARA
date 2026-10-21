@@ -8,8 +8,10 @@ export const AI_DEFAULTS = {
   model: process.env.MEMOPARA_AI_MODEL || 'qwen3-14b'
 };
 const CHARS_PER_TOKEN = 3.5;      // português medido no qwen3: ~3,8 caracteres/token (margem de segurança)
-const FINAL_OUTPUT_TOKENS = 3000;
-const MAP_OUTPUT_TOKENS = 900;
+const FINAL_OUTPUT_TOKENS = 3500;
+// medido na apostila de 36 páginas: partes usam 300–880 tokens; 1500 dá folga (900 estourava às vezes)
+const MAP_OUTPUT_TOKENS = 1500;
+const MAP_CONCURRENCY = 3;        // o LM Studio atende pedidos em paralelo (slots); 3 partes por vez
 const PROMPT_OVERHEAD = 700;
 const CHUNK_CHARS = 6000;         // tamanho de cada parte no modo página a página
 const MAX_CARDS = 25;
@@ -30,33 +32,44 @@ const LONG_MATERIAL = `Este material é longo e foi lido em partes. Cubra TODOS 
 // avisos vazios que o modelo às vezes escreve ("…não apresenta dúvidas", "parece correto")
 const NO_ISSUE = /(não|nao)\s+(apresenta|há|ha|tem|possui)(\s+nenhuma?)?\s+(dúvida|duvida|problema|erro)|sem\s+(dúvidas|duvidas|problemas)|parece\s+(estar\s+)?(correto|completo)|nenhum\s+outro\s+trecho/i;
 
-const finalSchema = {
+// maxLength limita cada texto na própria gramática do modelo: um aviso não consegue mais
+// copiar uma tabela inteira de números (era o que enchia a resposta nas páginas de tabela)
+const str = (max) => ({ type: 'string', maxLength: max });
+const cardSchema = (maxItems) => ({
+  type: 'array', maxItems,
+  items: { type: 'object', properties: { pergunta: str(200), resposta: str(200) }, required: ['pergunta', 'resposta'] }
+});
+
+const finalSchema = (maxCards = 15) => ({
   type: 'object',
   properties: {
-    titulo: { type: 'string' },
-    resumo: { type: 'string' },
-    pontos_chave: { type: 'array', items: { type: 'string' }, maxItems: 10 },
-    flashcards: {
-      type: 'array', maxItems: 15,
-      items: { type: 'object', properties: { pergunta: { type: 'string' }, resposta: { type: 'string' } }, required: ['pergunta', 'resposta'] }
-    },
-    avisos: { type: 'array', items: { type: 'string' }, maxItems: 10 }
+    titulo: str(120),
+    resumo: str(6000),
+    pontos_chave: { type: 'array', items: str(250), maxItems: 10 },
+    flashcards: cardSchema(maxCards),
+    avisos: { type: 'array', items: str(220), maxItems: 8 }
   },
   required: ['titulo', 'resumo', 'pontos_chave', 'flashcards', 'avisos']
-};
+});
 
 const mapSchema = {
   type: 'object',
   properties: {
-    fatos: { type: 'array', items: { type: 'string' }, maxItems: 10 },
-    flashcards: {
-      type: 'array', maxItems: 4,
-      items: { type: 'object', properties: { pergunta: { type: 'string' }, resposta: { type: 'string' } }, required: ['pergunta', 'resposta'] }
-    },
-    avisos: { type: 'array', items: { type: 'string' }, maxItems: 5 }
+    fatos: { type: 'array', items: str(250), maxItems: 10 },
+    flashcards: cardSchema(4),
+    avisos: { type: 'array', items: str(200), maxItems: 3 }
   },
   required: ['fatos', 'flashcards', 'avisos']
 };
+
+// pedido enxuto para a segunda tentativa de uma parte que estourou o limite
+const leanMapSchema = {
+  type: 'object',
+  properties: { fatos: { type: 'array', items: str(200), maxItems: 6 } },
+  required: ['fatos']
+};
+
+const LENGTH = 'length';
 
 export const estimateTokens = (text) => Math.ceil(String(text).length / CHARS_PER_TOKEN);
 
@@ -192,7 +205,53 @@ export function createAi({ fetchImpl = fetch, baseUrl = AI_DEFAULTS.baseUrl, mod
     const choice = data.choices?.[0];
     const raw = String(choice?.message?.content ?? '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
     try { return JSON.parse(raw); } catch {
-      throw httpError(502, choice?.finish_reason === 'length' ? 'O modelo não terminou a resposta (limite de tamanho).' : 'O modelo devolveu uma resposta inválida. Tente de novo.');
+      if (choice?.finish_reason === 'length') throw Object.assign(httpError(502, 'O modelo não terminou a resposta (limite de tamanho).'), { code: LENGTH });
+      throw httpError(502, 'O modelo devolveu uma resposta inválida. Tente de novo.');
+    }
+  }
+
+  const MAP_PROMPT = 'Liste os fatos essenciais deste trecho de material de estudo, em frases curtas e completas (até 10), de 2 a 4 flashcards sobre ESTE trecho (uma ideia por cartão, sem perguntas de lista, resposta de até 15 palavras) e, em "avisos", só trechos que pareçam realmente errados ou ilegíveis, em no máximo uma frase cada e sem copiar tabelas (lista vazia se não houver).';
+  const LEAN_PROMPT = 'Liste apenas os fatos essenciais deste trecho de material de estudo, em até 6 frases curtas. Ignore tabelas de números.';
+
+  // Lê uma parte; se a resposta estourar o limite (ex.: página só de tabela), tenta de novo com um
+  // pedido enxuto e, se ainda assim falhar, segue sem essa parte em vez de perder a apostila inteira.
+  async function readPart(chunk, i, total, signal) {
+    const label = `Trecho ${i + 1} de ${total}:\n"""\n${chunk}\n"""`;
+    try {
+      return await chat(`${MAP_PROMPT}\n\n${label}`, mapSchema, MAP_OUTPUT_TOKENS, signal);
+    } catch (err) {
+      if (err.code !== LENGTH) throw err;
+    }
+    try {
+      const r = await chat(`${LEAN_PROMPT}\n\n${label}`, leanMapSchema, MAP_OUTPUT_TOKENS, signal);
+      return { fatos: r.fatos, flashcards: [], avisos: [] };
+    } catch (err) {
+      if (err.code !== LENGTH) throw err;
+      return { fatos: [], flashcards: [], avisos: [`A parte ${i + 1} não pôde ser lida pela IA (texto muito denso, como tabelas). Confira essa parte no PDF.`] };
+    }
+  }
+
+  // Executa até `limit` tarefas ao mesmo tempo, mantendo a ordem dos resultados.
+  async function pool(items, limit, worker) {
+    const results = new Array(items.length);
+    let next = 0;
+    const run = async () => {
+      while (next < items.length) {
+        const i = next++;
+        results[i] = await worker(items[i], i);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, run));
+    return results;
+  }
+
+  // Resumo final; se estourar o limite, tenta de novo pedindo menos cartões.
+  async function finalPass(prompt, signal) {
+    try {
+      return await chat(prompt, finalSchema(15), FINAL_OUTPUT_TOKENS, signal);
+    } catch (err) {
+      if (err.code !== LENGTH) throw err;
+      return chat(`${prompt}\n\nSeja mais conciso: resumo curto e no máximo 8 flashcards.`, finalSchema(8), FINAL_OUTPUT_TOKENS, signal);
     }
   }
 
@@ -211,28 +270,29 @@ export function createAi({ fetchImpl = fetch, baseUrl = AI_DEFAULTS.baseUrl, mod
     if (fitsOnce) {
       mode = 'uma passagem';
       onProgress({ step: 1, total: 1, label: 'Lendo o texto inteiro' });
-      result = await chat(`${header}\n\nTexto:\n"""\n${source}\n"""`, finalSchema, FINAL_OUTPUT_TOKENS, signal);
+      result = await finalPass(`${header}\n\nTexto:\n"""\n${source}\n"""`, signal);
     } else {
       mode = 'página a página';
       const chunks = splitIntoChunks(source, Math.min(CHUNK_CHARS, Math.floor((ctx - MAP_OUTPUT_TOKENS - PROMPT_OVERHEAD) * CHARS_PER_TOKEN)));
       parts = chunks.length;
-      const notes = [];
-      const warnings = [];
-      const partCards = []; // cartões de cada parte: garantem que todos os temas apareçam
-      for (const [i, chunk] of chunks.entries()) {
+      let done = 0;
+      onProgress({ step: 0, total: chunks.length + 1, label: `Lendo ${chunks.length} partes (${MAP_CONCURRENCY} de cada vez)` });
+      const read = await pool(chunks, MAP_CONCURRENCY, async (chunk, i) => {
         if (signal.aborted) throw httpError(499, 'Cancelado.');
-        onProgress({ step: i + 1, total: chunks.length + 1, label: `Lendo a parte ${i + 1} de ${chunks.length}` });
-        const r = await chat(`Liste os fatos essenciais deste trecho de material de estudo, em frases curtas e completas (até 10), de 2 a 4 flashcards sobre ESTE trecho (uma ideia por cartão, sem perguntas de lista, resposta de até 15 palavras) e, em "avisos", só trechos que pareçam realmente errados ou ilegíveis (lista vazia se não houver).\n\nTrecho ${i + 1} de ${chunks.length}:\n"""\n${chunk}\n"""`, mapSchema, MAP_OUTPUT_TOKENS, signal);
-        notes.push(`Parte ${i + 1}:\n- ${r.fatos.join('\n- ')}`);
-        partCards.push(...r.flashcards);
-        warnings.push(...r.avisos);
-      }
+        const r = await readPart(chunk, i, chunks.length, signal);
+        done++;
+        onProgress({ step: done, total: chunks.length + 1, label: `Partes lidas: ${done} de ${chunks.length}` });
+        return r;
+      });
+      const notes = read.map((r, i) => `Parte ${i + 1}:\n- ${r.fatos.join('\n- ')}`);
+      const warnings = read.flatMap((r) => r.avisos);
+      const partCards = read.flatMap((r) => r.flashcards); // cartões de cada parte: garantem que todos os temas apareçam
       onProgress({ step: chunks.length + 1, total: chunks.length + 1, label: 'Juntando tudo no resumo final' });
       // se as anotações juntas ainda não couberem, corta proporcionalmente
       let joined = notes.join('\n\n');
       const budgetChars = (ctx - FINAL_OUTPUT_TOKENS - PROMPT_OVERHEAD - estimateTokens(header)) * CHARS_PER_TOKEN;
       if (joined.length > budgetChars) joined = joined.slice(0, Math.max(1000, budgetChars));
-      result = await chat(`${header}\n\n${LONG_MATERIAL}\n\nUse estas anotações, extraídas parte a parte do material:\n"""\n${joined}\n"""`, finalSchema, FINAL_OUTPUT_TOKENS, signal);
+      result = await finalPass(`${header}\n\n${LONG_MATERIAL}\n\nUse estas anotações, extraídas parte a parte do material:\n"""\n${joined}\n"""`, signal);
       result.avisos = [...warnings, ...result.avisos];
       // primeiro os cartões das partes (na ordem do material), depois os do resumo final
       result.flashcards = [...partCards, ...result.flashcards];

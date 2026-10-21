@@ -149,3 +149,42 @@ test('cards with content not found in the source are flagged as possibly invente
   assert.deepEqual(r.flashcards.map((c) => c.foraDoTexto), [true, false]);
   assert.ok(r.avisos.some((a) => /não está no texto/.test(a)));
 });
+
+test('a cut-off answer is retried lean, then skipped with a warning, and never fails the whole apostila', async () => {
+  let inFlight = 0;
+  let maxInFlight = 0;
+  let finalCalls = 0;
+  const partAttempts = new Map();
+  const fetchImpl = async (url, opts = {}) => {
+    const json = (body) => ({ ok: true, status: 200, json: async () => body });
+    if (url.endsWith('/v1/models')) return json({ data: [{ id: 'qwen3-14b' }] });
+    if (url.includes('/api/v0/models/')) return json({ loaded_context_length: 8192 });
+    const body = JSON.parse(opts.body);
+    const user = body.messages[1].content;
+    const reply = (content, finish = 'stop') => json({ choices: [{ message: { content }, finish_reason: finish }] });
+    inFlight++; maxInFlight = Math.max(maxInFlight, inFlight);
+    await new Promise((r) => setTimeout(r, 5));
+    inFlight--;
+    if (body.response_format.json_schema.schema.properties.fatos) {
+      const part = Number(user.match(/Trecho (\d+) de/)[1]);
+      const n = (partAttempts.get(part) || 0) + 1;
+      partAttempts.set(part, n);
+      if (part === 2 && n === 1) return reply('{"fatos": ["corta', 'length');      // estoura 1x, depois ok
+      if (part === 3) return reply('{"fatos": ["tabela 1,2 3,4', 'length');        // sempre estoura
+      const lean = !body.response_format.json_schema.schema.properties.flashcards;
+      return reply(JSON.stringify(lean ? { fatos: [`fato enxuto ${part}`] } : { fatos: [`fato ${part}`], flashcards: [{ pergunta: `Pergunta da parte ${part}?`, resposta: `resposta ${part}` }], avisos: [] }));
+    }
+    finalCalls++;
+    if (finalCalls === 1) return reply('{"titulo": "T", "resumo": "muito longo', 'length');
+    return reply(JSON.stringify({ titulo: 'T', resumo: '### R', pontos_chave: [], flashcards: [], avisos: [] }));
+  };
+  const r = await createAi({ fetchImpl }).suggest({ text: longText });
+  assert.equal(r.mode, 'página a página');
+  assert.equal(partAttempts.get(2), 2, 'parte 2: uma nova tentativa enxuta');
+  assert.equal(partAttempts.get(3), 2, 'parte 3: tentou de novo e depois desistiu só dela');
+  assert.ok(r.avisos.some((a) => /parte 3 não pôde ser lida/i.test(a)));
+  assert.equal(finalCalls, 2, 'resumo final refeito de forma mais concisa');
+  assert.ok(r.flashcards.some((c) => c.pergunta === 'Pergunta da parte 1?'));
+  assert.ok(!r.flashcards.some((c) => /parte 2\?|parte 3\?/.test(c.pergunta)), 'partes refeitas no modo enxuto não trazem cartões');
+  assert.ok(maxInFlight >= 2 && maxInFlight <= 3, `partes em paralelo (máx. 3), visto: ${maxInFlight}`);
+});
