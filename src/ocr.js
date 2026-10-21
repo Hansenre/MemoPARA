@@ -24,8 +24,9 @@ export async function detectTesseract({ refresh = false } = {}) {
     try {
       const version = (await run(cmd, ['--version'], 10_000)).split('\n')[0].trim();
       const langs = (await run(cmd, ['--list-langs'], 10_000)).split(/\r?\n/).slice(1).map((l) => l.trim()).filter(Boolean);
-      const wanted = ['por', 'eng'].filter((l) => langs.includes(l));
-      cached = { available: true, cmd, version, langs: wanted.length ? wanted : langs.slice(0, 1) };
+      // só "por" quando existe: misturado com "eng", o Tesseract perde acentos (não há → nao ha)
+      const wanted = langs.includes('por') ? ['por'] : langs.includes('eng') ? ['eng'] : langs.filter((l) => l !== 'osd').slice(0, 1);
+      cached = { available: true, cmd, version, langs: wanted };
       return cached;
     } catch { /* tenta o próximo */ }
   }
