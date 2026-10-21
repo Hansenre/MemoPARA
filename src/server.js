@@ -8,12 +8,14 @@ import { openDatabase } from './db.js';
 import { createService } from './service.js';
 import { PARA, resolveInside } from './vault.js';
 import { createApostilaService } from './apostilas.js';
+import { createPdfImporter } from './pdfimport.js';
+import { detectTesseract, ocrImage } from './ocr.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const VAULT_MIME = { '.pdf': 'application/pdf', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif' };
 const MIME = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.webmanifest': 'application/manifest+json'
 };
 
@@ -60,7 +62,7 @@ function openPath(target, select = false) {
   execFile('explorer.exe', select ? [`/select,${target}`] : [target], { windowsHide: true }, () => {});
 }
 
-export function createApp({ service, apostilas = null, paths, onActivity = () => {} }) {
+export function createApp({ service, apostilas = null, pdfImporter = null, paths, onActivity = () => {} }) {
   const routes = [];
   const route = (method, pattern, handler) => {
     const keys = [];
@@ -94,6 +96,17 @@ export function createApp({ service, apostilas = null, paths, onActivity = () =>
   route('PUT', '/api/settings', ({ body }) => service.updateSettings(body));
   route('GET', '/api/export', () => service.exportAll());
   route('POST', '/api/import', ({ body }) => service.importAll(body));
+
+  if (pdfImporter) route('POST', '/api/pdf-import', ({ body }) => pdfImporter.importPdf(body));
+  route('GET', '/api/ocr/status', () => detectTesseract());
+  route('POST', '/api/ocr', async ({ body }) => {
+    // OCR de uma imagem avulsa (páginas de PDF digitalizado renderizadas no navegador)
+    const buf = Buffer.from(String(body.image ?? '').replace(/^data:image\/jpeg;base64,/, ''), 'base64');
+    if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) throw Object.assign(new Error('Envie a imagem em JPEG.'), { status: 400 });
+    const tmp = path.join(os.tmpdir(), `memopara-ocr-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`);
+    fs.writeFileSync(tmp, buf);
+    try { return { text: await ocrImage(tmp) }; } finally { fs.rmSync(tmp, { force: true }); }
+  });
 
   if (apostilas) {
     route('GET', '/api/apostilas', () => apostilas.list());
@@ -148,7 +161,7 @@ export function createApp({ service, apostilas = null, paths, onActivity = () =>
       if (req.method !== 'GET' && req.method !== 'DELETE') {
         // exigir JSON impede formulários de outros sites de acionarem a API (CSRF)
         if (!String(req.headers['content-type'] || '').startsWith('application/json')) return send(415, { error: 'Use application/json.' });
-        body = await readJson(req, url.pathname === '/api/import' ? 200 * 1024 * 1024 : 25 * 1024 * 1024);
+        body = await readJson(req, ['/api/import', '/api/pdf-import'].includes(url.pathname) ? 200 * 1024 * 1024 : 25 * 1024 * 1024);
       }
       const params = Object.fromEntries(match.r.keys.map((k, i) => [k, decodeURIComponent(match.m[i + 1])]));
       send(200, await match.r.handler({ params, query: url.searchParams, body }));
@@ -183,9 +196,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const db = openDatabase(paths.dbPath);
   const service = createService({ db, vaultDir: paths.vaultDir });
   const apostilas = createApostilaService({ db, vaultDir: paths.vaultDir, notes: service });
+  const pdfImporter = createPdfImporter({ vaultDir: paths.vaultDir, notes: service });
   const sync = service.syncVault();
   let lastActivity = Date.now();
-  const handler = createApp({ service, apostilas, paths, onActivity: () => { lastActivity = Date.now(); } });
+  const handler = createApp({ service, apostilas, pdfImporter, paths, onActivity: () => { lastActivity = Date.now(); } });
   const server = http.createServer(handler);
   server.listen(args.port, '127.0.0.1', () => {
     console.log(`MemoPARA em http://127.0.0.1:${args.port}`);

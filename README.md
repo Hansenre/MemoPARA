@@ -20,6 +20,11 @@ explorador de arquivos, backup/restauração e as **apostilas**: fotos das pági
 câmera ou Ctrl+V), girar e reordenar, PDF gerado na pasta PARA e uma nota ligada a ele, com OCR
 opcional pelo Tesseract.
 
+**Importar PDF** (tela Notas, botão ou arrastar): o PDF é copiado para a pasta PARA e vira uma nota
+editável com o texto dele, separado por página e pesquisável. PDFs digitalizados passam pelo OCR
+quando o Tesseract está instalado. A leitura usa o [pdf.js](https://mozilla.github.io/pdf.js/)
+(Apache-2.0), incluído em `public/vendor/pdfjs` para funcionar offline.
+
 ## Rodar
 
 ```bash
@@ -40,6 +45,7 @@ src/service.js     regras: notas, cartões, fila, revisão, painel, backup
 src/apostilas.js   apostilas: páginas, PDF e nota vinculada
 src/pdf.js         gerador de PDF a partir de JPEGs (sem dependências)
 src/ocr.js         OCR opcional via Tesseract
+src/pdfimport.js   importação de PDF: copia o arquivo e cria a nota
 src/server.js      HTTP (somente 127.0.0.1/::1), API JSON e arquivos estáticos
 public/            interface (ES modules, sem build)
 launcher/          atalho (VBS sem console), instalador do atalho, gerador de ícone

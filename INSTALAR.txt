@@ -118,9 +118,11 @@ Ele não tem dependências para baixar: só precisa do Node.js.
     Edite %LOCALAPPDATA%\MemoPARA\config.json, troque o "vaultDir"
     (use \\ nas barras, ex.: "D:\\Estudos\\MemoPARA") e reabra o app.
 
-  Importar notas antigas (.md ou .txt):
-    Arraste os arquivos para a tela "Notas", ou copie-os para as pastas
-    do vault e clique em "Sincronizar vault".
+  Importar notas antigas (.md ou .txt) ou PDFs:
+    Arraste os arquivos para a tela "Notas" (ou use "Importar PDF").
+    Cada PDF é copiado para a pasta e vira uma nota editável com o
+    texto dele. Arquivos .md/.txt também podem ser copiados direto para
+    as pastas do vault; depois clique em "Sincronizar vault".
 
 
 ---------------------------------------------------------------

@@ -1,6 +1,7 @@
 import { api, h, $, icon, toast, memoryBadge, relDays, promptDialog } from '../ui.js';
 import { esc } from '../md.js';
 import { app } from '../main.js';
+import { importPdfFiles } from '../pdfimport.js';
 
 export async function renderNotes(view, query) {
   const para = query.para || '';
@@ -36,10 +37,12 @@ export async function renderNotes(view, query) {
         <div class="toolbar">
           <input type="search" placeholder="Buscar em ${esc(where.toLowerCase() === 'todas as notas' ? 'todas as notas' : where)}…" value="${esc(q)}" aria-label="Buscar">
           ${para ? `<button class="btn" data-new-folder>${icon('folder', 16)} Nova pasta</button>` : ''}
+          <label class="btn" style="flex-direction:row;font-size:14px;color:var(--text)" title="O PDF vai para a pasta e vira uma nota editável com o texto dele">${icon('book', 16)} Importar PDF
+            <input type="file" accept="application/pdf,.pdf" multiple hidden data-pdf></label>
           <a class="btn primary" href="#/nova?${new URLSearchParams({ para: para || 'inbox', ...(folder && { folder }) })}">${icon('plus', 16)} Nova nota</a>
         </div>
         <div class="row" style="justify-content:space-between"><h2>${esc(where)}</h2><small>${notes.length} ${notes.length === 1 ? 'nota' : 'notas'}</small></div>
-        <div class="drop" data-drop>Arraste arquivos <code>.md</code> ou <code>.txt</code> aqui para importar ${para ? `em <strong>${esc(where)}</strong>` : 'na Entrada'}</div>
+        <div class="drop" data-drop>Arraste arquivos <code>.pdf</code>, <code>.md</code> ou <code>.txt</code> aqui para importar ${para ? `em <strong>${esc(where)}</strong>` : 'na Entrada'}</div>
         <div class="list">${notes.length ? notes.map(row).join('') : `<div class="empty"><p>${q ? 'Nenhuma nota encontrada.' : 'Esta pasta está vazia.'}</p></div>`}</div>
       </section>
     </div>
@@ -74,14 +77,30 @@ export async function renderNotes(view, query) {
     } catch (err) { toast(err.message, 'error'); }
   });
 
+  async function importPdfs(files) {
+    const created = await importPdfFiles(files, { para: para || 'inbox', folder });
+    if (!created.length) return;
+    if (created.length === 1) {
+      toast('PDF importado. Revise a nota e escreva seu resumo.', 'good');
+      location.hash = `#/nota/${created[0].noteId}`;
+    } else {
+      toast(`${created.length} PDFs importados.`, 'good');
+      dispatchEvent(new HashChangeEvent('hashchange'));
+    }
+  }
+  $('[data-pdf]', view).addEventListener('change', (e) => { const f = [...e.target.files]; e.target.value = ''; importPdfs(f); });
+
   const drop = $('[data-drop]', view);
   view.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
   view.addEventListener('dragleave', (e) => { if (!view.contains(e.relatedTarget)) drop.classList.remove('over'); });
   view.addEventListener('drop', async (e) => {
     e.preventDefault();
     drop.classList.remove('over');
-    const files = [...e.dataTransfer.files].filter((f) => /\.(md|markdown|txt)$/i.test(f.name));
-    if (!files.length) return toast('Apenas arquivos .md ou .txt.', 'error');
+    const all = [...e.dataTransfer.files];
+    const pdfs = all.filter((f) => /\.pdf$/i.test(f.name));
+    const files = all.filter((f) => /\.(md|markdown|txt)$/i.test(f.name));
+    if (pdfs.length) await importPdfs(pdfs);
+    if (!files.length) { if (!pdfs.length) toast('Apenas arquivos .pdf, .md ou .txt.', 'error'); return; }
     let ok = 0;
     for (const f of files) {
       try {

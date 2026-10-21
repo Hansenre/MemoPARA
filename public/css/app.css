@@ -360,3 +360,4 @@ main:focus-visible { outline: none; }
 .camera-bar { display: flex; align-items: center; gap: 10px; padding: 12px; background: var(--surface); }
 .camera-bar select { width: auto; max-width: 260px; }
 .camera.flash-shot video { opacity: .3; }
+.import-progress { flex-direction: column; gap: 10px; width: min(460px, calc(100vw - 32px)); } .import-progress[open] { display: flex; } .import-progress p { margin: 0; overflow-wrap: anywhere; }

@@ -235,5 +235,6 @@ export function createApostilaService({ db, vaultDir, notes, clock = () => new D
 // Link Markdown relativo à pasta da nota, com cada trecho codificado (compatível com Obsidian).
 export function relativeLink(notePath, targetPath) {
   const rel = path.posix.relative(path.posix.dirname(notePath), targetPath);
-  return rel.split('/').map((seg) => (seg === '..' ? seg : encodeURIComponent(seg))).join('/');
+  // parênteses também são codificados: um ')' solto fecharia o link Markdown antes da hora
+  return rel.split('/').map((seg) => (seg === '..' ? seg : encodeURIComponent(seg).replace(/\(/g, '%28').replace(/\)/g, '%29'))).join('/');
 }

@@ -1,0 +1,2 @@
+pdf.js 4.10.38 (pdfjs-dist, Mozilla) — Apache-2.0. Copiado sem alterações de
+https://www.npmjs.com/package/pdfjs-dist/v/4.10.38 para ler PDFs offline no navegador.
