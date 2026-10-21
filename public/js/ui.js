@@ -44,8 +44,9 @@ export function confirmDialog(message, { ok = 'Confirmar', danger = false } = {}
 export function promptDialog(message, value = '') {
   return new Promise((resolve) => {
     const dlg = h(`<dialog class="dialog"><form method="dialog"><label>${esc(message)}<input name="v" value="${esc(value)}" autocomplete="off"></label>
-      <div class="row end"><button class="btn ghost" value="">Cancelar</button><button class="btn primary" value="ok">OK</button></div></form></dialog>`);
+      <div class="row end"><button type="button" class="btn ghost" data-cancel>Cancelar</button><button class="btn primary" value="ok">OK</button></div></form></dialog>`);
     document.body.append(dlg);
+    $('[data-cancel]', dlg).addEventListener('click', () => dlg.close(''));
     dlg.addEventListener('close', () => { resolve(dlg.returnValue === 'ok' ? $('input', dlg).value.trim() : null); dlg.remove(); });
     dlg.showModal();
   });
@@ -96,6 +97,8 @@ export const icons = {
   sync: '<path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 21v-5h5M21 3v5h-5"/>',
   alert: '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
   flame: '<path d="M12 22c4 0 7-3 7-7 0-4-3-6-4-10-2 2-3 4-3 6-1-1-2-2-2-4-2 2-5 5-5 8 0 4 3 7 7 7z"/>',
+  book: '<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 0 4 22.5z"/><path d="M4 4.5v18"/><path d="M9 7h7M9 11h5"/>',
+  camera: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
   pin: '<path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/>'
 };
 export const icon = (name, size = 18) =>

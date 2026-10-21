@@ -6,10 +6,12 @@ import { execFile, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { openDatabase } from './db.js';
 import { createService } from './service.js';
-import { PARA } from './vault.js';
+import { PARA, resolveInside } from './vault.js';
+import { createApostilaService } from './apostilas.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC_DIR = path.join(ROOT, 'public');
+const VAULT_MIME = { '.pdf': 'application/pdf', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif' };
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.webmanifest': 'application/manifest+json'
@@ -58,7 +60,7 @@ function openPath(target, select = false) {
   execFile('explorer.exe', select ? [`/select,${target}`] : [target], { windowsHide: true }, () => {});
 }
 
-export function createApp({ service, paths, onActivity = () => {} }) {
+export function createApp({ service, apostilas = null, paths, onActivity = () => {} }) {
   const routes = [];
   const route = (method, pattern, handler) => {
     const keys = [];
@@ -93,6 +95,22 @@ export function createApp({ service, paths, onActivity = () => {} }) {
   route('GET', '/api/export', () => service.exportAll());
   route('POST', '/api/import', ({ body }) => service.importAll(body));
 
+  if (apostilas) {
+    route('GET', '/api/apostilas', () => apostilas.list());
+    route('POST', '/api/apostilas', ({ body }) => apostilas.create(body));
+    route('GET', '/api/apostilas/:id', ({ params }) => apostilas.get(params.id));
+    route('PUT', '/api/apostilas/:id', ({ params, body }) => apostilas.update(params.id, body));
+    route('DELETE', '/api/apostilas/:id', ({ params }) => apostilas.remove(params.id));
+    route('POST', '/api/apostilas/:id/pages', ({ params, body }) => apostilas.addPage(params.id, body));
+    route('PUT', '/api/apostilas/:id/order', ({ params, body }) => apostilas.reorder(params.id, body.pageIds));
+    route('PUT', '/api/apostilas/:id/pages/:pageId', ({ params, body }) => apostilas.rotatePage(params.id, params.pageId, body));
+    route('DELETE', '/api/apostilas/:id/pages/:pageId', ({ params }) => apostilas.deletePage(params.id, params.pageId));
+    route('POST', '/api/apostilas/:id/pages/:pageId/ocr', ({ params }) => apostilas.ocrPage(params.id, params.pageId));
+    route('POST', '/api/apostilas/:id/pdf', ({ params, body }) => apostilas.generate(params.id, body));
+    route('POST', '/api/apostilas/:id/open-pdf', ({ params }) => { openPath(apostilas.pdfAbsPath(params.id)); return { ok: true }; });
+    route('POST', '/api/apostilas/:id/reveal-pdf', ({ params }) => { openPath(apostilas.pdfAbsPath(params.id), true); return { ok: true }; });
+  }
+
   return async (req, res) => {
     onActivity();
     // Só aceita acessos pelo próprio computador (bloqueia DNS rebinding).
@@ -104,8 +122,19 @@ export function createApp({ service, paths, onActivity = () => {} }) {
     }
     const url = new URL(req.url, 'http://localhost');
     if (url.pathname.startsWith('/api/')) return handleApi(req, res, url);
+    if (url.pathname.startsWith('/vault/')) return serveVaultFile(res, url.pathname);
     return serveStatic(res, url.pathname);
   };
+
+  // Arquivos do vault (PDFs e imagens) para links dentro das notas e miniaturas das apostilas.
+  function serveVaultFile(res, pathname) {
+    let file;
+    try { file = resolveInside(paths.vaultDir, decodeURIComponent(pathname.slice('/vault/'.length))); } catch { res.writeHead(400).end(); return; }
+    const type = VAULT_MIME[path.extname(file).toLowerCase()];
+    if (!type || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404).end('Arquivo não encontrado'); return; }
+    res.writeHead(200, { 'Content-Type': type, 'Content-Length': fs.statSync(file).size, 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff' });
+    fs.createReadStream(file).pipe(res);
+  }
 
   async function handleApi(req, res, url) {
     const send = (status, data) => {
@@ -119,7 +148,7 @@ export function createApp({ service, paths, onActivity = () => {} }) {
       if (req.method !== 'GET' && req.method !== 'DELETE') {
         // exigir JSON impede formulários de outros sites de acionarem a API (CSRF)
         if (!String(req.headers['content-type'] || '').startsWith('application/json')) return send(415, { error: 'Use application/json.' });
-        body = await readJson(req, url.pathname === '/api/import' ? 200 * 1024 * 1024 : 10 * 1024 * 1024);
+        body = await readJson(req, url.pathname === '/api/import' ? 200 * 1024 * 1024 : 25 * 1024 * 1024);
       }
       const params = Object.fromEntries(match.r.keys.map((k, i) => [k, decodeURIComponent(match.m[i + 1])]));
       send(200, await match.r.handler({ params, query: url.searchParams, body }));
@@ -153,9 +182,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const paths = resolvePaths();
   const db = openDatabase(paths.dbPath);
   const service = createService({ db, vaultDir: paths.vaultDir });
+  const apostilas = createApostilaService({ db, vaultDir: paths.vaultDir, notes: service });
   const sync = service.syncVault();
   let lastActivity = Date.now();
-  const handler = createApp({ service, paths, onActivity: () => { lastActivity = Date.now(); } });
+  const handler = createApp({ service, apostilas, paths, onActivity: () => { lastActivity = Date.now(); } });
   const server = http.createServer(handler);
   server.listen(args.port, '127.0.0.1', () => {
     console.log(`MemoPARA em http://127.0.0.1:${args.port}`);

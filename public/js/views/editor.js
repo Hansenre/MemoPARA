@@ -78,7 +78,8 @@ export async function renderEditor(view, { id, draft }) {
     preview.hidden = mode === 'edit';
     view.querySelectorAll('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
   };
-  const paintPreview = () => { preview.innerHTML = renderMarkdown(textarea.value) || '<p class="muted">Pré-visualização</p>'; };
+  const baseDir = () => (note ? note.path.split('/').slice(0, -1).join('/') : null);
+  const paintPreview = () => { preview.innerHTML = renderMarkdown(textarea.value, { base: baseDir() }) || '<p class="muted">Pré-visualização</p>'; };
   fillFolders();
   applyMode();
   paintPreview();
@@ -132,6 +133,7 @@ export async function renderEditor(view, { id, draft }) {
         if (created) {
           toast('Nota criada. A primeira revisão fica para o próximo dia de estudo.', 'good');
           history.replaceState(null, '', `#/nota/${note.id}`);
+          paintPreview();
           $('[data-save]', view).innerHTML = 'Salvar <kbd>Ctrl S</kbd>';
         }
         if ($f('folder').value !== note.folder) $f('folder').value = note.folder;

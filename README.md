@@ -16,7 +16,9 @@ Revisão espaçada com **FSRS** e organização **PARA**. É a nova versão do
 
 Mantido do original: PARA com subpastas, recordação ativa, metacognição (confiança
 antes da resposta), alerta de ilusão de competência, palácio da memória (loci),
-explorador de arquivos e backup/restauração.
+explorador de arquivos, backup/restauração e as **apostilas**: fotos das páginas (arquivo,
+câmera ou Ctrl+V), girar e reordenar, PDF gerado na pasta PARA e uma nota ligada a ele, com OCR
+opcional pelo Tesseract.
 
 ## Rodar
 
@@ -35,6 +37,9 @@ src/fsrs.js        algoritmo FSRS-5
 src/db.js          SQLite (node:sqlite) e migrações
 src/vault.js       arquivos .md, front matter, flashcards, caminhos seguros
 src/service.js     regras: notas, cartões, fila, revisão, painel, backup
+src/apostilas.js   apostilas: páginas, PDF e nota vinculada
+src/pdf.js         gerador de PDF a partir de JPEGs (sem dependências)
+src/ocr.js         OCR opcional via Tesseract
 src/server.js      HTTP (somente 127.0.0.1/::1), API JSON e arquivos estáticos
 public/            interface (ES modules, sem build)
 launcher/          atalho (VBS sem console), instalador do atalho, gerador de ícone

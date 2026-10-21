@@ -100,6 +100,20 @@ Ele não tem dependências para baixar: só precisa do Node.js.
  7. AJUSTES OPCIONAIS
 ---------------------------------------------------------------
 
+  Ler o texto das fotos das apostilas (OCR):
+    a) Baixe o instalador do Tesseract para Windows em
+       https://github.com/UB-Mannheim/tesseract/wiki
+    b) No instalador, em "Additional language data", marque
+       "Portuguese". Mantenha a pasta padrão
+       (C:\Program Files\Tesseract-OCR).
+    c) Feche e reabra o MemoPARA. Na tela Apostilas, a opção
+       "Extrair o texto das fotos (OCR)" passa a ficar disponível.
+    Sem o Tesseract, tudo funciona normalmente, só sem o OCR.
+
+  Câmera nas apostilas:
+    Na primeira vez, o Edge pergunta se o 127.0.0.1 pode usar a
+    câmera. Clique em "Permitir".
+
   Mudar a pasta das notas:
     Edite %LOCALAPPDATA%\MemoPARA\config.json, troque o "vaultDir"
     (use \\ nas barras, ex.: "D:\\Estudos\\MemoPARA") e reabra o app.

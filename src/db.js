@@ -56,6 +56,34 @@ const MIGRATIONS = [
   CREATE INDEX reviews_at ON reviews(reviewed_at);
   CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   CREATE VIRTUAL TABLE notes_fts USING fts5(note_id UNINDEXED, title, body, tokenize = 'unicode61 remove_diacritics 2');
+  `,
+  `
+  CREATE TABLE apostilas (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    para TEXT NOT NULL,
+    folder TEXT NOT NULL DEFAULT '',
+    note_id TEXT,
+    pdf_path TEXT,
+    link_target TEXT,
+    generated_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE TABLE apostila_pages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    apostila_id TEXT NOT NULL REFERENCES apostilas(id) ON DELETE CASCADE,
+    file TEXT NOT NULL,
+    original TEXT NOT NULL,
+    ord INTEGER NOT NULL,
+    rotation INTEGER NOT NULL DEFAULT 0,
+    width INTEGER NOT NULL,
+    height INTEGER NOT NULL,
+    name TEXT NOT NULL DEFAULT '',
+    ocr_text TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX apostila_pages_order ON apostila_pages(apostila_id, ord);
   `
 ];
 

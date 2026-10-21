@@ -51,6 +51,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; }
 body { background: var(--bg); color: var(--text); font: 15px/1.55 var(--font); -webkit-font-smoothing: antialiased; }
 a { color: var(--accent); text-decoration: none; }
@@ -322,3 +323,40 @@ main:focus-visible { outline: none; }
 @container main (max-width: 860px) and (min-width: 641px) {
   .explorer { grid-template-columns: 200px minmax(0, 1fr); }
 }
+.md img { max-width: 100%; border-radius: 8px; }
+
+/* ---------- apostilas ---------- */
+.ap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.ap-card { padding: 0; overflow: hidden; color: var(--text); display: flex; flex-direction: column; transition: transform .12s, box-shadow .12s; }
+.ap-card:hover { text-decoration: none; transform: translateY(-2px); }
+.ap-cover { height: 160px; background: var(--surface-2); display: grid; place-items: center; color: var(--muted); overflow: hidden; }
+.ap-cover img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.ap-info { padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.ap-work { display: flex; flex-direction: column; gap: 14px; transition: outline-color .15s; outline: 2px dashed transparent; outline-offset: -8px; }
+.ap-work.over { outline-color: var(--accent); background: var(--accent-soft); }
+.ap-progress { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text-2); }
+.ap-progress .progress { max-width: 240px; }
+.ap-pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.ap-empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 48px 16px; color: var(--muted); text-align: center; border: 2px dashed var(--border); border-radius: var(--radius); }
+.ap-empty p { margin: 0; }
+.ap-page { margin: 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface); cursor: grab; transition: opacity .15s, box-shadow .15s; }
+.ap-page.dragging { opacity: .4; }
+.ap-page.working { opacity: .6; pointer-events: none; }
+.ap-img { height: 200px; background: var(--surface-2); display: grid; place-items: center; }
+.ap-img img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+.ap-page figcaption { display: flex; align-items: center; gap: 2px; padding: 6px 6px 6px 10px; border-top: 1px solid var(--border); font-size: 13px; }
+.ap-page figcaption .badge { margin-left: 6px; }
+.icon-btn { border: 0; background: transparent; color: var(--text-2); width: 26px; height: 26px; border-radius: 6px; cursor: pointer; font-size: 15px; line-height: 1; }
+.icon-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
+.icon-btn:disabled { opacity: .3; cursor: default; }
+.icon-btn.danger:hover { color: var(--bad); }
+.ap-side { display: flex; flex-direction: column; gap: 12px; align-self: start; }
+.ap-side hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; width: 100%; }
+.ap-result { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--surface-2); border-radius: 12px; }
+.check { flex-direction: row; align-items: center; gap: 8px; font-size: 14px; color: var(--text); }
+.check input { width: auto; }
+.camera { width: min(960px, calc(100vw - 32px)); background: #000; border-color: #000; }
+.camera video { display: block; width: 100%; max-height: 72vh; background: #000; }
+.camera-bar { display: flex; align-items: center; gap: 10px; padding: 12px; background: var(--surface); }
+.camera-bar select { width: auto; max-width: 260px; }
+.camera.flash-shot video { opacity: .3; }

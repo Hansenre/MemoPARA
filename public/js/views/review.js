@@ -107,7 +107,7 @@ export async function renderReview(view, { noteId } = {}) {
     $('[data-reveal]', flash).parentElement.remove();
     flash.append(h(`<div class="answer">
       <div class="step-label" style="margin-bottom:10px">Resposta${recall ? ' — compare com o que você escreveu' : ''}</div>
-      <div class="md">${c.kind === 'note' ? (c.body?.trim() ? renderMarkdown(c.body) : '<p class="muted">Nota vazia.</p>') : renderMarkdown(c.answer, { cards: false })}</div>
+      <div class="md">${c.kind === 'note' ? (c.body?.trim() ? renderMarkdown(c.body, { base: dirOf(c.path) }) : '<p class="muted">Nota vazia.</p>') : renderMarkdown(c.answer, { cards: false, base: dirOf(c.path) })}</div>
     </div>`));
     flash.append(h(`<div>
       <div class="step-label" style="margin-bottom:8px">3 · Como foi?${confidence ? ` <span class="muted" style="text-transform:none;letter-spacing:0">(você marcou “${CONF[confidence - 1]}”)</span>` : ''}</div>
@@ -154,3 +154,5 @@ export async function renderReview(view, { noteId } = {}) {
 function renderInline(text) {
   return renderMarkdown(text, { cards: false }).replace(/^<p>|<\/p>$/g, '');
 }
+
+const dirOf = (p) => (p ? p.split('/').slice(0, -1).join('/') : null);

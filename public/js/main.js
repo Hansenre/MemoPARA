@@ -5,6 +5,7 @@ import { renderReview } from './views/review.js';
 import { renderNotes } from './views/notes.js';
 import { renderEditor } from './views/editor.js';
 import { renderSettings } from './views/settings.js';
+import { renderApostilas, renderApostila } from './views/apostilas.js';
 
 export const app = { meta: null, cleanup: null };
 
@@ -12,6 +13,7 @@ const NAV = [
   { href: '#/', label: 'Hoje', icon: 'today', key: 'today' },
   { href: '#/revisar', label: 'Revisar', icon: 'review', key: 'review' },
   { href: '#/notas', label: 'Notas', icon: 'notes', key: 'notes' },
+  { href: '#/apostilas', label: 'Apostilas', icon: 'book', key: 'apostilas' },
   { href: '#/config', label: 'Ajustes', icon: 'settings', key: 'settings' }
 ];
 
@@ -57,7 +59,7 @@ async function route() {
   const old = $('#view');
   const view = old.cloneNode(false);
   old.replaceWith(view);
-  const key = { '': 'today', revisar: 'review', notas: 'notes', nota: 'notes', nova: 'notes', config: 'settings' }[section ?? ''] ?? 'today';
+  const key = { '': 'today', revisar: 'review', notas: 'notes', nota: 'notes', nova: 'notes', apostilas: 'apostilas', apostila: 'apostilas', config: 'settings' }[section ?? ''] ?? 'today';
   $$('[data-nav]').forEach((a) => a.classList.toggle('active', a.dataset.nav === key));
   try {
     if (!section) await renderToday(view);
@@ -65,6 +67,8 @@ async function route() {
     else if (section === 'notas') await renderNotes(view, parseQuery(hash));
     else if (section === 'nota') await renderEditor(view, { id: decodeURIComponent(id || '') });
     else if (section === 'nova') await renderEditor(view, { draft: parseQuery(hash) });
+    else if (section === 'apostilas') await renderApostilas(view);
+    else if (section === 'apostila') await renderApostila(view, { id: decodeURIComponent(id || '') });
     else if (section === 'config') await renderSettings(view);
     else await renderToday(view);
   } catch (err) {
@@ -103,6 +107,7 @@ function openPalette() {
     { label: 'Nova nota', hint: 'N', go: '#/nova' },
     { label: 'Painel de hoje', go: '#/' },
     { label: 'Explorar notas PARA', go: '#/notas' },
+    { label: 'Apostilas (fotos → PDF)', go: '#/apostilas' },
     { label: 'Ajustes e backup', go: '#/config' }
   ];
   let items = [];
