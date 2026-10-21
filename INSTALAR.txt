@@ -1,0 +1,136 @@
+===============================================================
+ MemoPARA — Instalação em um computador novo (primeira vez)
+===============================================================
+
+O MemoPARA roda no seu computador (nada vai para a internet).
+Ele não tem dependências para baixar: só precisa do Node.js.
+
+
+---------------------------------------------------------------
+ 1. REQUISITOS
+---------------------------------------------------------------
+
+  - Windows 10 ou 11
+  - Node.js versão 22.13 ou mais recente (recomendado: a versão LTS)
+  - Microsoft Edge ou Google Chrome (o Edge já vem no Windows)
+
+
+---------------------------------------------------------------
+ 2. INSTALAR O NODE.JS (só na primeira vez)
+---------------------------------------------------------------
+
+  a) Acesse https://nodejs.org e baixe a versão "LTS" para Windows.
+  b) Execute o instalador e clique em "Next" até o fim
+     (as opções padrão servem).
+  c) Para conferir, abra o "Prompt de Comando" e digite:
+
+        node -v
+
+     Deve aparecer algo como v22.x.x ou v24.x.x.
+
+
+---------------------------------------------------------------
+ 3. COPIAR O MEMOPARA
+---------------------------------------------------------------
+
+  Copie a pasta inteira "MemoPARA" para o novo computador, por
+  exemplo para:
+
+        C:\Programas\MemoPARA
+
+  (Pen drive, OneDrive, ZIP… qualquer forma serve. Se usar o Git:
+   git clone <endereço do repositório> C:\Programas\MemoPARA)
+
+  Dica: escolha o lugar definitivo antes de criar o atalho. Se mover
+  a pasta depois, é só repetir o passo 4.
+
+
+---------------------------------------------------------------
+ 4. CRIAR O ATALHO NA ÁREA DE TRABALHO
+---------------------------------------------------------------
+
+  a) Abra a pasta MemoPARA\launcher
+  b) Clique com o botão direito em "install-shortcut.ps1"
+     e escolha "Executar com o PowerShell".
+
+  Se o Windows bloquear o script, abra o PowerShell e rode:
+
+        powershell -ExecutionPolicy Bypass -File "C:\Programas\MemoPARA\launcher\install-shortcut.ps1"
+
+  Isso cria o atalho "MemoPARA" na Área de Trabalho e no Menu Iniciar
+  (e avisa se o Node.js estiver faltando ou desatualizado).
+
+
+---------------------------------------------------------------
+ 5. ABRIR
+---------------------------------------------------------------
+
+  Dê dois cliques no atalho "MemoPARA".
+  O app abre numa janela própria. Ao fechar a janela, o servidor
+  interno se encerra sozinho depois de alguns minutos.
+
+  Na primeira abertura são criadas:
+
+    - Suas notas (arquivos .md):  Documentos\MemoPARA
+         com as pastas Inbox, Projects, Areas, Resources, Archives
+    - Banco de dados (agenda e histórico de revisões):
+         %LOCALAPPDATA%\MemoPARA\memopara.db
+
+  Também dá para abrir no navegador: http://127.0.0.1:5060
+
+
+---------------------------------------------------------------
+ 6. LEVAR SEUS DADOS DO COMPUTADOR ANTIGO
+---------------------------------------------------------------
+
+  No computador antigo:
+    Ajustes > "Exportar backup (.json)"  — salve o arquivo.
+
+  No computador novo (depois do passo 5):
+    Ajustes > "Restaurar backup"  — escolha o arquivo.
+
+  O backup leva tudo: notas, flashcards, agenda do FSRS e histórico.
+
+  Atenção: se a pasta Documentos estiver no OneDrive, as notas .md
+  sincronizam sozinhas, mas a AGENDA de revisões fica no banco local de
+  cada computador. Para continuar de onde parou, use o backup.
+
+
+---------------------------------------------------------------
+ 7. AJUSTES OPCIONAIS
+---------------------------------------------------------------
+
+  Mudar a pasta das notas:
+    Edite %LOCALAPPDATA%\MemoPARA\config.json, troque o "vaultDir"
+    (use \\ nas barras, ex.: "D:\\Estudos\\MemoPARA") e reabra o app.
+
+  Importar notas antigas (.md ou .txt):
+    Arraste os arquivos para a tela "Notas", ou copie-os para as pastas
+    do vault e clique em "Sincronizar vault".
+
+
+---------------------------------------------------------------
+ 8. PROBLEMAS COMUNS
+---------------------------------------------------------------
+
+  "O Node.js não foi encontrado"
+    Instale o Node.js (passo 2). Se acabou de instalar, reinicie o
+    computador ou faça logoff/logon.
+
+  "O servidor do MemoPARA não respondeu"
+    Veja o log em %LOCALAPPDATA%\MemoPARA\server.log.
+    Causa mais comum: outro programa usando a porta 5060. Feche-o, ou
+    troque a porta na linha "Const PORT = 5060" de launcher\MemoPARA.vbs.
+
+  O atalho abre no navegador comum em vez de janela própria
+    Acontece quando nem o Edge nem o Chrome estão nos locais padrão.
+    Funciona do mesmo jeito.
+
+
+---------------------------------------------------------------
+ 9. DESINSTALAR
+---------------------------------------------------------------
+
+  Apague a pasta do MemoPARA e os atalhos "MemoPARA" da Área de
+  Trabalho e do Menu Iniciar. Seus dados ficam em Documentos\MemoPARA
+  e %LOCALAPPDATA%\MemoPARA — apague-os só se não quiser mais as notas.
