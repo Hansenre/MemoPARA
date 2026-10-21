@@ -65,7 +65,7 @@ async function route() {
     if (!section) await renderToday(view);
     else if (section === 'revisar') await renderReview(view, { noteId: id });
     else if (section === 'notas') await renderNotes(view, parseQuery(hash));
-    else if (section === 'nota') await renderEditor(view, { id: decodeURIComponent(id || '') });
+    else if (section === 'nota') await renderEditor(view, { id: decodeURIComponent(id || ''), autoAi: parseQuery(hash).ia === '1' });
     else if (section === 'nova') await renderEditor(view, { draft: parseQuery(hash) });
     else if (section === 'apostilas') await renderApostilas(view);
     else if (section === 'apostila') await renderApostila(view, { id: decodeURIComponent(id || '') });

@@ -10,6 +10,7 @@ import { PARA, resolveInside } from './vault.js';
 import { createApostilaService } from './apostilas.js';
 import { createPdfImporter } from './pdfimport.js';
 import { detectTesseract, ocrImage } from './ocr.js';
+import { createAi, studyText } from './ai.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC_DIR = path.join(ROOT, 'public');
@@ -62,7 +63,7 @@ function openPath(target, select = false) {
   execFile('explorer.exe', select ? [`/select,${target}`] : [target], { windowsHide: true }, () => {});
 }
 
-export function createApp({ service, apostilas = null, pdfImporter = null, paths, onActivity = () => {} }) {
+export function createApp({ service, apostilas = null, pdfImporter = null, ai = createAi(), paths, onActivity = () => {} }) {
   const routes = [];
   const route = (method, pattern, handler) => {
     const keys = [];
@@ -96,6 +97,19 @@ export function createApp({ service, apostilas = null, pdfImporter = null, paths
   route('PUT', '/api/settings', ({ body }) => service.updateSettings(body));
   route('GET', '/api/export', () => service.exportAll());
   route('POST', '/api/import', ({ body }) => service.importAll(body));
+
+  // IA local (LM Studio): sugestões de resumo e flashcards, revisadas pelo usuário antes de inserir
+  route('GET', '/api/ai/status', () => ai.status());
+  route('POST', '/api/ai/jobs', ({ body }) => {
+    const note = service.getNote(body.noteId);
+    return ai.startJob({
+      text: studyText(note.body),
+      title: note.title,
+      existingCards: note.cards.filter((c) => c.kind === 'qa').map((c) => `${c.prompt} :: ${c.answer}`)
+    });
+  });
+  route('GET', '/api/ai/jobs/:id', ({ params }) => ai.getJob(params.id));
+  route('DELETE', '/api/ai/jobs/:id', ({ params }) => ai.cancelJob(params.id));
 
   if (pdfImporter) route('POST', '/api/pdf-import', ({ body }) => pdfImporter.importPdf(body));
   route('GET', '/api/ocr/status', () => detectTesseract());

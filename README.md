@@ -25,6 +25,13 @@ editável com o texto dele, separado por página e pesquisável. PDFs digitaliza
 quando o Tesseract está instalado. A leitura usa o [pdf.js](https://mozilla.github.io/pdf.js/)
 (Apache-2.0), incluído em `public/vendor/pdfjs` para funcionar offline.
 
+**Sugestões com IA local** (opcional): no editor de nota, "✨ Sugerir resumo e flashcards", e nas
+apostilas, "✨ Resumir apostila", pedem ao modelo `qwen3-14b` do LM Studio (`localhost:1234`) um resumo
+e flashcards. Tudo roda no computador. Nada entra na nota sem a tela de revisão, onde você edita e
+escolhe os cartões. Textos longos são lidos página a página automaticamente; cartões com conteúdo que
+não está no texto, ou com números/unidades diferentes do original, chegam marcados. Para trocar o
+modelo ou o endereço: variáveis `MEMOPARA_AI_MODEL` e `MEMOPARA_LLM_URL`.
+
 ## Rodar
 
 ```bash
@@ -46,6 +53,7 @@ src/apostilas.js   apostilas: páginas, PDF e nota vinculada
 src/pdf.js         gerador de PDF a partir de JPEGs (sem dependências)
 src/ocr.js         OCR opcional via Tesseract
 src/pdfimport.js   importação de PDF: copia o arquivo e cria a nota
+src/ai.js          sugestões de resumo/flashcards via LM Studio (partes, avisos, checagem)
 src/server.js      HTTP (somente 127.0.0.1/::1), API JSON e arquivos estáticos
 public/            interface (ES modules, sem build)
 launcher/          atalho (VBS sem console), instalador do atalho, gerador de ícone

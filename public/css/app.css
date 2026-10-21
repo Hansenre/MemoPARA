@@ -361,3 +361,28 @@ main:focus-visible { outline: none; }
 .camera-bar select { width: auto; max-width: 260px; }
 .camera.flash-shot video { opacity: .3; }
 .import-progress { flex-direction: column; gap: 10px; width: min(460px, calc(100vw - 32px)); } .import-progress[open] { display: flex; } .import-progress p { margin: 0; overflow-wrap: anywhere; }
+
+/* ---------- IA local ---------- */
+.ai-progress[open] { display: flex; flex-direction: column; gap: 12px; width: min(460px, calc(100vw - 32px)); }
+.ai-review { width: min(860px, calc(100vw - 32px)); max-height: calc(100vh - 48px); }
+.ai-review[open] { display: flex; flex-direction: column; }
+.ai-review header { display: flex; align-items: center; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--border); }
+.ai-review header h2 { margin-bottom: 2px; }
+.ai-body { overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 20px; }
+.ai-body section { display: flex; flex-direction: column; gap: 8px; }
+.ai-body textarea { font: 14px/1.55 var(--mono); resize: vertical; }
+.ai-body .md.card { box-shadow: none; max-height: 340px; overflow: auto; }
+.ai-warn { background: var(--warn-soft); color: var(--text); border-radius: 12px; padding: 12px 16px; font-size: 14px; }
+.ai-warn strong { color: var(--warn); }
+.ai-warn ul { margin: 6px 0 0; padding-left: 20px; }
+.ai-cards { display: flex; flex-direction: column; gap: 8px; }
+.ai-card { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; }
+.ai-card > input { width: auto; margin-top: 10px; }
+.ai-card-fields { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ai-card-fields input { padding: 7px 10px; font-size: 14px; }
+.ai-card-fields [data-q] { font-weight: 560; }
+.ai-check { grid-column: 1 / -1; color: var(--warn); }
+.ai-card:has(> input:not(:checked)) .ai-card-fields { opacity: .45; }
+.ai-review footer { padding: 14px 20px; border-top: 1px solid var(--border); }
+@media (max-width: 760px) { .ai-card-fields { grid-template-columns: 1fr; } }
+.ai-card.ungrounded { border-color: var(--warn); border-style: dashed; }

@@ -1,6 +1,7 @@
 import { api, h, $, icon, toast, confirmDialog, relDays, pct, fmtInterval, STATE_LABEL } from '../ui.js';
 import { esc, renderMarkdown } from '../md.js';
 import { app, refreshDueCount } from '../main.js';
+import { suggestForNote, insertSuggestions } from '../ai.js';
 
 const TEMPLATE = `# Título
 
@@ -13,7 +14,7 @@ Resumo com suas palavras: o que é, por que importa, como se conecta ao que voc�
 Pergunta de exemplo :: Resposta de exemplo
 `;
 
-export async function renderEditor(view, { id, draft }) {
+export async function renderEditor(view, { id, draft, autoAi = false }) {
   let note = id ? await api(`/api/notes/${encodeURIComponent(id)}`) : null;
   const tree = await api('/api/tree');
   if (!view.isConnected) return; // o usuário já mudou de tela
@@ -35,6 +36,7 @@ export async function renderEditor(view, { id, draft }) {
       <a class="btn ghost sm" href="${note ? `#/notas?para=${note.para}${note.folder ? `&folder=${encodeURIComponent(note.folder)}` : ''}` : '#/notas'}">← Notas</a>
       <input class="title-input" name="title" placeholder="Título da nota" value="${esc(state.title)}" aria-label="Título" maxlength="200">
       <span class="muted" data-status style="font-size:13px">${note ? 'Salvo' : 'Nova nota'}</span>
+      <button class="btn" data-ai ${note ? '' : 'hidden'} title="Gera um resumo e flashcards com o modelo local do LM Studio; você revisa antes de inserir">✨ Sugerir resumo e flashcards</button>
       <button class="btn primary" data-save>${note ? 'Salvar' : 'Criar nota'} <kbd>Ctrl S</kbd></button>
     </div>
     <div class="fields">
@@ -115,6 +117,32 @@ export async function renderEditor(view, { id, draft }) {
     if (dirty && note) save();
   };
   if (!note) { $f('title').focus(); }
+  let aiRunning = false;
+  $('[data-ai]', view).addEventListener('click', runAi);
+  if (autoAi && note) {
+    history.replaceState(null, '', `#/nota/${note.id}`);
+    runAi();
+  }
+
+  async function runAi() {
+    if (!note || aiRunning) return;
+    aiRunning = true;
+    try {
+      if (dirty) await save();
+      const chosen = await suggestForNote(note.id);
+      if (!chosen || !view.isConnected) return;
+      textarea.value = insertSuggestions(textarea.value, chosen);
+      paintPreview();
+      dirty = true;
+      await save();
+      const n = chosen.cards.length;
+      toast(`${chosen.summary ? 'Resumo' : ''}${chosen.summary && n ? ' e ' : ''}${n ? `${n} ${n === 1 ? 'cartão' : 'cartões'}` : ''} inserido${n > 1 || (chosen.summary && n) ? 's' : ''} na nota.`, 'good');
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      aiRunning = false;
+    }
+  }
 
   async function save() {
     if (saving) return saving;
@@ -135,6 +163,7 @@ export async function renderEditor(view, { id, draft }) {
           history.replaceState(null, '', `#/nota/${note.id}`);
           paintPreview();
           $('[data-save]', view).innerHTML = 'Salvar <kbd>Ctrl S</kbd>';
+          $('[data-ai]', view).hidden = false;
         }
         if ($f('folder').value !== note.folder) $f('folder').value = note.folder;
         paintExtra();

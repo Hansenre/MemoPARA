@@ -260,6 +260,8 @@ export async function renderApostila(view, { id }) {
         ? `<small class="muted">${esc(a.ocr.version)} · ${esc(a.ocr.langs.join(' + ') || 'idioma padrão')}${missingOcr < a.pages.length ? ` · ${a.pages.length - missingOcr} de ${a.pages.length} páginas já lidas` : ''}. O texto entra na nota e fica pesquisável.</small>`
         : '<small class="muted">Instale o <a href="https://github.com/UB-Mannheim/tesseract/wiki" target="_blank" rel="noopener noreferrer">Tesseract para Windows</a> marcando o idioma Português e reabra o app para ativar.</small>'}
       <button class="btn primary lg" data-generate ${a.pages.length ? '' : 'disabled'}>${a.generated_at ? 'Gerar de novo' : 'Gerar PDF e nota'}</button>
+      <button class="btn" data-summarize ${a.pages.length ? '' : 'disabled'} title="Lê o texto das páginas (OCR), atualiza a nota e pede ao modelo local um resumo e flashcards para você revisar">✨ Resumir apostila (IA local)</button>
+      ${a.ocr.available ? '' : '<small class="muted">Para resumir, o app precisa do OCR (Tesseract) para ler o texto das fotos.</small>'}
       ${a.generated_at ? `
         <div class="ap-result">
           <div class="row"><span class="badge ${stale ? 'warn' : 'ok'}">${stale ? 'mudou desde o último PDF' : 'PDF em dia'}</span><small class="muted">gerado ${relDays(a.generated_at)}</small></div>
@@ -271,7 +273,8 @@ export async function renderApostila(view, { id }) {
       <hr>
       <button class="btn ghost danger sm" data-delete>Excluir apostila</button>
       <small class="muted">Excluir remove só as fotos (vão para a lixeira do vault). O PDF e a nota continuam.</small>`;
-    $('[data-generate]', side)?.addEventListener('click', generate);
+    $('[data-generate]', side)?.addEventListener('click', () => generate());
+    $('[data-summarize]', side)?.addEventListener('click', summarize);
     $('[data-open-pdf]', side)?.addEventListener('click', () => api(`/api/apostilas/${a.id}/open-pdf`, { method: 'POST', body: {} }).catch((err) => toast(err.message, 'error')));
     $('[data-reveal-pdf]', side)?.addEventListener('click', () => api(`/api/apostilas/${a.id}/reveal-pdf`, { method: 'POST', body: {} }).catch((err) => toast(err.message, 'error')));
     $('[data-delete]', side).addEventListener('click', async () => {
@@ -281,9 +284,19 @@ export async function renderApostila(view, { id }) {
     });
   }
 
-  async function generate() {
+  // Resumir = garantir o texto (OCR) na nota e abrir a nota já pedindo as sugestões à IA
+  async function summarize() {
     if (busy) return;
-    const useOcr = $('[data-ocr]', view)?.checked;
+    if (!a.ocr.available && a.pages.some((p) => !p.ocr_text)) {
+      toast('Para resumir, o app precisa ler o texto das fotos: instale o Tesseract (veja INSTALAR.txt).', 'error', 7000);
+      return;
+    }
+    if (await generate(true)) location.hash = `#/nota/${a.note.id}?ia=1`;
+  }
+
+  async function generate(forceOcr = false) {
+    if (busy) return false;
+    const useOcr = forceOcr || $('[data-ocr]', view)?.checked;
     try {
       if (useOcr) {
         const pending = a.pages.filter((p) => !p.ocr_text);
@@ -305,9 +318,11 @@ export async function renderApostila(view, { id }) {
       toast(`PDF gerado (${(r.bytes / 1024 / 1024).toFixed(1).replace('.', ',')} MB) e nota ${a.note ? 'atualizada' : 'criada'}.`, 'good');
       paintPages();
       paintSide();
+      return !!a.note;
     } catch (err) {
       status.textContent = '';
       toast(err.message, 'error');
+      return false;
     } finally {
       busy = false;
     }

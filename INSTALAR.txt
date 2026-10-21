@@ -110,6 +110,12 @@ Ele não tem dependências para baixar: só precisa do Node.js.
        "Extrair o texto das fotos (OCR)" passa a ficar disponível.
     Sem o Tesseract, tudo funciona normalmente, só sem o OCR.
 
+  Resumos e flashcards com IA local (opcional):
+    Precisa do LM Studio (https://lmstudio.ai) com o modelo qwen3-14b
+    baixado e o servidor local ligado na porta 1234 (aba Developer).
+    Com isso, aparecem os botões "Sugerir resumo e flashcards" (na nota)
+    e "Resumir apostila". Sem o LM Studio, o resto do app funciona igual.
+
   Câmera nas apostilas:
     Na primeira vez, o Edge pergunta se o 127.0.0.1 pode usar a
     câmera. Clique em "Permitir".
