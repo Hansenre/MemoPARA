@@ -76,7 +76,7 @@ Ele não tem dependências para baixar: só precisa do Node.js.
     - Banco de dados (agenda e histórico de revisões):
          %LOCALAPPDATA%\MemoPARA\memopara.db
 
-  Também dá para abrir no navegador: http://127.0.0.1:5060
+  Também dá para abrir no navegador: http://127.0.0.1:5170
 
 
 ---------------------------------------------------------------
@@ -119,8 +119,10 @@ Ele não tem dependências para baixar: só precisa do Node.js.
 
   "O servidor do MemoPARA não respondeu"
     Veja o log em %LOCALAPPDATA%\MemoPARA\server.log.
-    Causa mais comum: outro programa usando a porta 5060. Feche-o, ou
-    troque a porta na linha "Const PORT = 5060" de launcher\MemoPARA.vbs.
+    Causa mais comum: outro programa usando a porta 5170. Feche-o, ou
+    troque a porta na linha "Const PORT = 5170" de launcher\MemoPARA.vbs.
+    Evite portas que o Edge/Chrome bloqueiam (ex.: 5060, 5061, 6000,
+    6665-6669, 10080): elas dão o erro ERR_UNSAFE_PORT.
 
   O atalho abre no navegador comum em vez de janela própria
     Acontece quando nem o Edge nem o Chrome estão nos locais padrão.

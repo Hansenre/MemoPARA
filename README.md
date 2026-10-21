@@ -21,7 +21,7 @@ explorador de arquivos e backup/restauração.
 ## Rodar
 
 ```bash
-npm start            # http://127.0.0.1:5060
+npm start            # http://127.0.0.1:5170
 npm test             # testes do FSRS, do vault e da API
 npm run shortcut     # cria o atalho na Área de Trabalho
 ```

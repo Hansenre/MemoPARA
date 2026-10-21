@@ -140,7 +140,7 @@ export function createApp({ service, paths, onActivity = () => {} }) {
 }
 
 function parseArgs(argv) {
-  const args = { port: Number(process.env.MEMOPARA_PORT) || 5060, autoExit: false };
+  const args = { port: Number(process.env.MEMOPARA_PORT) || 5170, autoExit: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--port') args.port = Number(argv[++i]);
     else if (argv[i] === '--auto-exit') args.autoExit = true;

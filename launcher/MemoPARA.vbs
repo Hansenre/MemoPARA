@@ -2,7 +2,7 @@
 ' Se o servidor ja estiver rodando, apenas abre a janela.
 Option Explicit
 
-Const PORT = 5060
+Const PORT = 5170
 Dim sh, fso, root, url, dataDir, logPath, i
 
 Set sh = CreateObject("WScript.Shell")
